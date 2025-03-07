@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, user-scalable=no" />
+  <title>Clicker Farm Game</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      transition: background-image 0.5s;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Thematische Hintergründe */
+    body.mais-bg { background-image: url('https://via.placeholder.com/1500x1000/FFFF99/000000?text=Maisfeld'); }
+    body.holz-bg { background-image: url('https://via.placeholder.com/1500x1000/8B4513/000000?text=Wald'); }
+    body.stein-bg { background-image: url('https://via.placeholder.com/1500x1000/808080/000000?text=Steinbruch'); }
+    body.wasser-bg { background-image: url('https://via.placeholder.com/1500x1000/00B7EB/000000?text=See'); }
+    body.weizen-bg { background-image: url('https://via.placeholder.com/1500x1000/D4A017/000000?text=Weizenfeld'); }
+    body.brot-bg { background-image: url('https://via.placeholder.com/1500x1000/F4A460/000000?text=Bäckerei'); }
+    body.farm-bg { background-image: url('https://via.placeholder.com/1500x1000/90EE90/000000?text=Farm'); }
+    body.arbeiter-bg { background-image: url('https://via.placeholder.com/1500x1000/D3D3D3/000000?text=Arbeiterdorf'); }
+
+    .container {
+      display: none;
+      padding: 20px;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      min-height: 0;
+    }
+    .container.active {
+      display: block;
+    }
+    #top-menu {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      background-color: #ccc;
+      padding: 10px;
+      margin: 0;
+    }
+    #top-menu button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      color: white;
+      background-color: #28a745;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    #top-menu button:hover {
+      transform: scale(1.05);
+      background-color: #218838;
+    }
+    .sub-menu {
+      margin: 20px 0;
+    }
+    .sub-menu button {
+      width: auto;
+      min-width: 80px;
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      color: white;
+      background-color: #007bff;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .sub-menu button:hover {
+      transform: scale(1.05);
+    }
+    .block {
+      width: 150px;
+      height: 150px;
+      border-radius: 20px;
+      border: 3px solid black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 20px auto;
+      transition: transform 0.1s;
+      position: relative;
+      overflow: hidden;
+    }
+    .block:active {
+      transform: scale(0.95);
+    }
+    .block.particle::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      animation: particle 0.5s ease-out;
+    }
+    @keyframes particle {
+      0% { transform: translate(0, 0); opacity: 1; }
+      100% { transform: translate(20px, -20px); opacity: 0; }
+    }
+    .research-button {
+      display: block;
+      width: 80%;
+      max-width: 400px;
+      padding: 15px;
+      margin: 10px auto;
+      font-size: 20px;
+      border: none;
+      color: white;
+      background-color: #ff9800;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .research-button:hover {
+      transform: scale(1.05);
+    }
+    progress {
+      width: 80%;
+      max-width: 400px;
+      height: 20px;
+      margin: 10px auto;
+      display: block;
+    }
+    button:disabled {
+      background-color: gray !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+    }
+    #resourceOverview {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(238, 238, 238, 0.9);
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+      z-index: 1000;
+    }
+    h1 {
+      margin: 60px 0 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Ressourcen-Übersicht oben -->
+  <div id="resourceOverview">
+    Gold: <span id="resGold">0</span> | 
+    Mais: <span id="resMais">0</span> | 
+    Holz: <span id="resHolz">0</span> | 
+    Stein: <span id="resStein">0</span> | 
+    Planken: <span id="resPlanken">0</span> | 
+    Wasser: <span id="resWasser">0</span> | 
+    Weizen: <span id="resWeizen">0</span> | 
+    Brot: <span id="resBrot">0</span>
+  </div>
+
+  <h1>Clicker Farm Game</h1>
+
+  <!-- Hauptmenü -->
+  <div id="top-menu">
+    <button onclick="showPage('mais')">Mais</button>
+    <button onclick="showPage('holz')">Holz</button>
+    <button onclick="showPage('stein')">Stein</button>
+    <button onclick="showPage('wasser')">Wasser</button>
+    <button onclick="showPage('weizen')">Weizen</button>
+    <button onclick="showPage('brot')">Brot</button>
+    <button onclick="showPage('farm')">Farm</button>
+    <button onclick="showPage('arbeiter')">Arbeiter</button>
+    <button onclick="resetGame()">Spiel zurücksetzen</button>
+    <button onclick="addTestResources()">+5000 Ressourcen (Test)</button>
+  </div>
+
+  <!-- MAIS-SEITE -->
+  <div id="mais" class="container">
+    <h2>Mais-Bereich</h2>
+    <div class="sub-menu">
+      <button onclick="toggleSection('mais','Feld')">Feld</button>
+      <button onclick="toggleSection('mais','Handel')">Handel</button>
+      <button onclick="toggleSection('mais','Shop')">Shop</button>
+      <button onclick="toggleSection('mais','Forschung')">Forschung</button>
+    </div>
+
+    <div id="maisFeldSection" style="display:block;">
+      <div id="maisBlock" class="block" style="background-color: yellow;" onclick="clickMaisBlock()">🌽</div>
+      <p>
+        Mais: <span id="maisScore">0</span> | Gold: <span id="maisGold">0</span><br/>
+        Ernte pro Klick: <span id="maisPPC">1</span> | Nachwachs-Zeit: <span id="maisRespawnTime">1.0</span> s
+      </p>
+      <button id="btnMaisFertilizer" class="research-button" disabled>Dünger einsetzen</button>
+      <p>Dünger: <span id="maisFertilizerCount">0</span></p>
+      <p id="fertilizerTimerDisplay" style="color:red;"></p>
+    </div>
+
+    <div id="maisHandelSection" style="display:none;">
+      <h3>Mais-Handel</h3>
+      <p>250 Mais = 1 Gold</p>
+      <button id="btnMaisTrade250" class="research-button">250 Mais tauschen</button>
+      <button id="btnMaisTrade500" class="research-button">500 Mais tauschen</button>
+      <button id="btnMaisTrade1000" class="research-button">1000 Mais tauschen</button>
+    </div>
+
+    <div id="maisShopSection" style="display:none;">
+      <h3>Mais-Shop</h3>
+      <button id="btnMaisPicker" class="research-button">
+        Erntegerät (<span id="costMaisPicker">5</span> Gold, +1 Klick) - Level <span id="pickerLevel">0</span>
+      </button>
+      <button id="btnMaisMachine" class="research-button">
+        Einfacher Dünger (<span id="costMaisMachine">10</span> Gold, -0.05s) - Level <span id="machineLevel">0</span>
+      </button>
+      <button id="btnMaisFertilizerShop" class="research-button">Dünger (17 Gold, +1 Dünger)</button>
+      <button id="btnAxe" class="research-button">Holzfäller-Axt (10 Gold) - <span id="axeStatus">Nicht gekauft</span></button>
+    </div>
+
+    <div id="maisForschungSection" style="display:none;">
+      <h3>Forschung – Mais</h3>
+      <button id="btnMaisDouble" class="research-button">
+        Verdopplung Mais (Kosten: <span id="costMaisDouble">10</span>) - Level <span id="levelMaisDoubleVal">0</span>
+      </button>
+      <progress id="progressMaisDouble" value="0" max="100" style="display:none;"></progress>
+      <button id="btnMaisFaster" class="research-button">
+        Schnelles Nachwachsen (Kosten: <span id="costMaisFaster">15</span>) - Level <span id="levelMaisFasterVal">0</span>
+      </button>
+      <progress id="progressMaisFaster" value="0" max="100" style="display:none;"></progress>
+    </div>
+  </div>
+
+  <!-- HOLZ-SEITE -->
+  <div id="holz" class="container">
+    <h2>Holz-Bereich</h2>
+    <div class="sub-menu">
+      <button onclick="toggleSection('holz','Feld')">Feld</button>
+      <button onclick="toggleSection('holz','Shop')">Shop</button>
+    </div>
+
+    <div id="holzFeldSection" style="display:block;">
+      <div id="holzBlock" class="block" style="background-color: brown;" onclick="clickHolzBlock()">🌳</div>
+      <p>
+        Holz: <span id="holzScore">0</span> | Gold: <span id="holzGold">0</span><br/>
+        Fällen pro Klick: <span id="holzPPC">1</span> | Nachwachs-Zeit: <span id="holzRespawnTime">2.0</span> s
+      </p>
+    </div>
+
+    <div id="holzShopSection" style="display:none;">
+      <h3>Holz-Shop</h3>
+      <button id="btnPickaxe" class="research-button">Steinpickel (20 Holz + 5 Gold) - <span id="pickaxeStatus">Nicht gekauft</span></button>
+    </div>
+  </div>
+
+  <!-- STEIN-SEITE -->
+  <div id="stein" class="container">
+    <h2>Stein-Bereich</h2>
+    <div class="sub-menu">
+      <button onclick="toggleSection('stein','Feld')">Feld</button>
+      <button onclick="toggleSection('stein','Shop')">Shop</button>
+    </div>
+
+    <div id="steinFeldSection" style="display:block;">
+      <div id="steinBlock" class="block" style="background-color: gray;" onclick="clickSteinBlock()">🪨</div>
+      <p>
+        Stein: <span id="steinScore">0</span> | Gold: <span id="steinGold">0</span><br/>
+        Ernte pro Klick: <span id="steinPPC">1</span> | Respawn-Zeit: <span id="steinRespawnTime">3.0</span> s
+      </p>
+    </div>
+
+    <div id="steinShopSection" style="display:none;">
+      <h3>Stein-Shop</h3>
+      <button id="btnFarmUnlock" class="research-button">
+        Farmgrundstück (100 Stein + 50 Holz + 20 Gold) - <span id="farmUnlockStatus">Nicht gekauft</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- WASSER-SEITE -->
+  <div id="wasser" class="container">
+    <h2>Wasser-Bereich</h2>
+    <div class="sub-menu">
+      <button onclick="toggleSection('wasser','Feld')">Feld</button>
+      <button onclick="toggleSection('wasser','Shop')">Shop</button>
+      <button onclick="toggleSection('wasser','Forschung')">Forschung</button>
+    </div>
+
+    <div id="wasserFeldSection" style="display:block;">
+      <div id="wasserBlock" class="block" style="background-color: blue;" onclick="clickWasserBlock()">💧</div>
+      <p>
+        Wasser: <span id="wasserScore">0</span> | Gold: <span id="wasserGold">0</span><br/>
+        Schöpfen pro Klick: <span id="wasserPPC">1</span> | Nachfüll-Zeit: <span id="wasserRespawnTime">2.0</span> s
+      </p>
+    </div>
+
+    <div id="wasserShopSection" style="display:none;">
+      <h3>Wasser-Shop</h3>
+      <button id="btnWasserPump" class="research-button">
+        Wasserpumpe (<span id="costWasserPump">20</span> Gold, +1 Klick) - Level <span id="wasserPumpLevel">0</span>
+      </button>
+      <!-- Angepasster Brunnen-Button mit drei Kosten (Gold, Stein, Holz) -->
+      <button id="btnBrunnen" class="research-button">
+        Brunnen (Kosten: <span id="costBrunnenGold">50</span> Gold, 
+        <span id="costBrunnenStein">30</span> Stein, 
+        <span id="costBrunnenHolz">20</span> Holz, 1 Wasser/3s) - Level <span id="brunnenLevel">0</span>
+      </button>
+    </div>
+
+    <div id="wasserForschungSection" style="display:none;">
+      <h3>Forschung – Wasser</h3>
+      <button id="btnWasserFaster" class="research-button">
+        Schnelles Nachfüllen (Kosten: <span id="costWasserFaster">200</span>) - Level <span id="levelWasserFasterVal">0</span>
+      </button>
+      <progress id="progressWasserFaster" value="0" max="100" style="display:none;"></progress>
+    </div>
+  </div>
+
+  <!-- WEIZEN-SEITE -->
+  <div id="weizen" class="container">
+    <h2>Weizen-Bereich</h2>
+    <div class="sub-menu">
+      <button onclick="toggleSection('weizen','Feld')">Feld</button>
+      <button onclick="toggleSection('weizen','Handel')">Handel</button>
+      <button onclick="toggleSection('weizen','Shop')">Shop</button>
+      <button onclick="toggleSection('weizen','Forschung')">Forschung</button>
+    </div>
+
+    <div id="weizenFeldSection" style="display:block;">
+      <div id="weizenBlock" class="block" style="background-color: #d4a017;" onclick="clickWeizenBlock()">🌾</div>
+      <p>
+        Weizen: <span id="weizenScore">0</span> | Gold: <span id="weizenGold">0</span><br/>
+        Ernte pro Klick: <span id="weizenPPC">1</span> | Nachwachs-Zeit: <span id="weizenRespawnTime">1.5</span> s
+      </p>
+    </div>
+
+    <div id="weizenHandelSection" style="display:none;">
+      <h3>Weizen-Handel</h3>
+      <p>200 Weizen = 1 Gold</p>
+      <button id="btnWeizenTrade200" class="research-button">200 Weizen tauschen</button>
+    </div>
+
+    <div id="weizenShopSection" style="display:none;">
+      <h3>Weizen-Shop</h3>
+      <button id="btnWeizenSeeds" class="research-button">
+        Weizensamen (50 Wasser + 100 Mais + 50 Gold) - <span id="weizenSeedsStatus">Nicht gekauft</span>
+      </button>
+      <button id="btnWeizenSickle" class="research-button">
+        Sichel (<span id="costWeizenSickle">15</span> Gold, +1 Klick) - Level <span id="weizenSickleLevel">0</span>
+      </button>
+    </div>
+
+    <div id="weizenForschungSection" style="display:none;">
+      <h3>Forschung – Weizen</h3>
+      <button id="btnWeizenDouble" class="research-button">
+        Verdopplung Weizen (Kosten: <span id="costWeizenDouble">300</span>) - Level <span id="levelWeizenDoubleVal">0</span>
+      </button>
+      <progress id="progressWeizenDouble" value="0" max="100" style="display:none;"></progress>
+    </div>
+  </div>
+
+  <!-- BROT-SEITE -->
+  <div id="brot" class="container">
+    <h2>Brot-Bereich</h2>
+    <div class="sub-menu">
+      <button onclick="toggleSection('brot','Produktion')">Produktion</button>
+      <button onclick="toggleSection('brot','Handel')">Handel</button>
+      <button onclick="toggleSection('brot','Shop')">Shop</button>
+    </div>
+
+    <div id="brotProduktionSection" style="display:block;">
+      <p>
+        Brot: <span id="brotScore">0</span> | Gold: <span id="brotGold">0</span>
+      </p>
+      <button id="btnBrotProduce" class="research-button">Brot backen (10 Weizen + 1 Wasser = 1 Brot)</button>
+    </div>
+
+    <div id="brotHandelSection" style="display:none;">
+      <h3>Brot-Handel</h3>
+      <p>1 Brot = 3 Gold</p>
+      <button id="btnBrotTrade" class="research-button">1 Brot tauschen</button>
+    </div>
+
+    <div id="brotShopSection" style="display:none;">
+      <h3>Brot-Shop</h3>
+      <button id="btnBakery" class="research-button">
+        Bäckerei (300 Holz + 100 Stein + 50 Gold) - <span id="bakeryStatus">Nicht gekauft</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- FARM-SEITE -->
+  <div id="farm" class="container">
+    <h2>Farm-Bereich</h2>
+    <p>Farmen: <span id="farmCount">0</span></p>
+    <button id="btnBuildFarm" class="research-button">Kleine Farm bauen (50 Stein + 30 Holz + 10 Gold)</button>
+
+    <div class="sub-menu">
+      <button onclick="toggleSection('farm','Feld')">Farmen</button>
+      <button onclick="toggleSection('farm','Shop')">Shop</button>
+    </div>
+
+    <div id="farmFeldSection" style="display:block;">
+      <p>Hier könnte man weitere Farm-Infos einblenden.</p>
+    </div>
+
+    <div id="farmShopSection" style="display:none;">
+      <h3>Farm-Shop</h3>
+      <button id="btnSawmill" class="research-button">
+        Sägewerk (500 Holz + 200 Stein + 100 Gold) - <span id="sawmillStatus">Nicht gekauft</span>
+      </button>
+      <button id="btnQuarry" class="research-button">
+        Steinbruch (1000 Stein + 300 Holz + 150 Gold) - <span id="quarryStatus">Nicht gekauft</span>
+      </button>
+      <button id="btnWatermill" class="research-button">
+        Wassermühle (200 Wasser + 300 Planken + 100 Gold) - <span id="watermillStatus">Nicht gekauft</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ARBEITER-SEITE -->
+  <div id="arbeiter" class="container">
+    <h2>Arbeiter-Bereich</h2>
+    <p>
+      Arbeiter: <span id="workerCount">0</span>/<span id="workerMax">0</span><br/>
+      Brotverbrauch: <span id="workerFood">0</span>
+    </p>
+    <p id="workerDistribution">Verteilung - Mais: 0, Holz: 0, Stein: 0, Weizen: 0 | Unverteilt: 0</p>
+    <button id="btnHireWorker" class="research-button">
+      Arbeiter anheuern (5 Brot + 500 Mais + 200 Holz + 100 Gold)
+    </button>
+
+    <div class="sub-menu" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; flex-direction: column;">
+        <button onclick="assignWorkers('mais')">Arbeiter +Mais</button>
+        <button onclick="assignWorkers('holz')">Arbeiter +Holz</button>
+        <button onclick="assignWorkers('stein')">Arbeiter +Stein</button>
+        <button onclick="assignWorkers('weizen')">Arbeiter +Weizen</button>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <button onclick="unassignWorker('mais')">Arbeiter -Mais</button>
+        <button onclick="unassignWorker('holz')">Arbeiter -Holz</button>
+        <button onclick="unassignWorker('stein')">Arbeiter -Stein</button>
+        <button onclick="unassignWorker('weizen')">Arbeiter -Weizen</button>
+      </div>
+    </div>
+
+    <div class="sub-menu">
+      <button onclick="toggleSection('arbeiter','Shop')">Shop</button>
+    </div>
+
+    <div id="arbeiterShopSection" style="display:none;">
+      <h3>Arbeiter-Shop</h3>
+      <button id="btnWorkerHut" class="research-button">
+        Arbeiterhütte erweitern (300 Stein + 150 Holz + 50 Gold, +5 Plätze)
+      </button>
+      <button id="btnBetterSickle" class="research-button">
+        Bessere Sichel (<span id="costBetterSickle">20</span> Gold, +0.5 Mais/s)
+      </button>
+      <button id="btnBetterAxe" class="research-button">
+        Bessere Axt (<span id="costBetterAxe">30</span> Gold, +0.3 Holz/s)
+      </button>
+      <button id="btnBetterScythe" class="research-button">
+        Bessere Sense (<span id="costBetterScythe">40</span> Gold, +0.3 Weizen/s)
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* -------------------------
+       Globale Variablen
+    ------------------------- */
+    let gold = 0, maisScore = 0, holzScore = 0, steinScore = 0,
+        wasserScore = 0, weizenScore = 0, brotScore = 0, plankenScore = 0;
+
+    let basePPC = 1;
+    function getCurrentPPC() { return fertilizerActive ? basePPC * 2 : basePPC; }
+
+    let maisRespawnTime = 1000, holzRespawnTime = 2000, steinRespawnTime = 3000,
+        wasserRespawnTime = 2000, weizenRespawnTime = 1500;
+
+    let maisFertilizer = 0, fertilizerActive = false, fertilizerTime = 0, fertilizerInterval = null;
+
+    let isResearching = { maisDouble: false, maisFaster: false, wasserFaster: false, weizenDouble: false };
+    const research = {
+      maisDouble: { cost: 10, resource: 'mais', researchTime: 5000, effect: () => { basePPC *= 2; }, level: 0 },
+      maisFaster: { cost: 15, resource: 'mais', researchTime: 5000, effect: () => { maisRespawnTime = Math.max(100, maisRespawnTime * 0.9); }, level: 0 },
+      wasserFaster: { cost: 200, resource: 'wasser', researchTime: 10000, effect: () => { wasserRespawnTime = Math.max(100, wasserRespawnTime - 200); }, level: 0 },
+      weizenDouble: { cost: 300, resource: 'weizen', researchTime: 15000, effect: () => { weizenPPC *= 2; }, level: 0 }
+    };
+
+    let pickerLevel = 0, machineLevel = 0, wasserPumpLevel = 0, weizenSickleLevel = 0;
+    let hasAxe = false, hasPickaxe = false, farmUnlocked = false, hasWeizenSeeds = false,
+        hasBakery = false, hasSawmill = false, hasQuarry = false, hasWatermill = false;
+
+    let farmCount = 0, workerCount = 0, workerMax = 0;
+    let workersAssigned = { mais: 0, holz: 0, stein: 0, weizen: 0 };
+    let workerMaisRate = 1, workerHolzRate = 0.5, workerSteinRate = 0.3, workerWeizenRate = 5;
+
+    // Neue Variable für den Brunnen
+    let brunnenLevel = 0;
+
+    let autoFarmInterval = null, autoWorkerInterval = null, autoBrunnenInterval = null;
+
+    /* -------------------------
+       Hauptfunktionen (Navigation)
+    ------------------------- */
+    function showPage(pageId) {
+      // Alle container ausblenden
+      document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
+      // Angefragte Seite einblenden
+      const page = document.getElementById(pageId);
+      if (page) {
+        page.classList.add('active');
+        // Hintergrundbild ändern
+        document.body.className = `${pageId}-bg`;
+      }
+      updateAllUI();
+    }
+
+    function toggleSection(resource, section) {
+      // Alle Subsections des Bereichs ausblenden
+      const sections = document.querySelectorAll(`#${resource} [id*='Section']`);
+      sections.forEach(el => el.style.display = 'none');
+      // Angefragte Subsection anzeigen
+      const target = document.getElementById(`${resource}${section}Section`);
+      if (target) target.style.display = 'block';
+      updateAllUI();
+    }
+
+    /* -------------------------
+       Klick- und Produktions-Funktionen
+    ------------------------- */
+    function clickMaisBlock() {
+      const blockEl = document.getElementById("maisBlock");
+      if (!blockEl || blockEl.style.pointerEvents === "none") return;
+      maisScore += getCurrentPPC();
+      blockEl.style.pointerEvents = "none";
+      blockEl.classList.add('particle');
+      setTimeout(() => {
+        blockEl.style.pointerEvents = "auto";
+        blockEl.classList.remove('particle');
+      }, maisRespawnTime);
+      updateMaisUI();
+    }
+    function clickHolzBlock() {
+      const blockEl = document.getElementById("holzBlock");
+      if (!blockEl || blockEl.style.pointerEvents === "none") return;
+      if (!hasAxe) return alert("Kaufe zuerst eine Holzfäller-Axt im Mais-Shop!");
+      holzScore += holzPPC;
+      blockEl.style.pointerEvents = "none";
+      blockEl.classList.add('particle');
+      setTimeout(() => {
+        blockEl.style.pointerEvents = "auto";
+        blockEl.classList.remove('particle');
+      }, holzRespawnTime);
+      updateHolzUI();
+    }
+    function clickSteinBlock() {
+      const blockEl = document.getElementById("steinBlock");
+      if (!blockEl || blockEl.style.pointerEvents === "none") return;
+      if (!hasPickaxe) return alert("Kaufe zuerst einen Steinpickel im Holz-Shop!");
+      steinScore += steinPPC;
+      blockEl.style.pointerEvents = "none";
+      blockEl.classList.add('particle');
+      setTimeout(() => {
+        blockEl.style.pointerEvents = "auto";
+        blockEl.classList.remove('particle');
+      }, steinRespawnTime);
+      updateSteinUI();
+    }
+    function clickWasserBlock() {
+      const blockEl = document.getElementById("wasserBlock");
+      if (!blockEl || blockEl.style.pointerEvents === "none") return;
+      if (!farmCount) return alert("Baue zuerst eine Farm!");
+      wasserScore += wasserPPC;
+      blockEl.style.pointerEvents = "none";
+      blockEl.classList.add('particle');
+      setTimeout(() => {
+        blockEl.style.pointerEvents = "auto";
+        blockEl.classList.remove('particle');
+      }, wasserRespawnTime);
+      updateWasserUI();
+    }
+    function clickWeizenBlock() {
+      const blockEl = document.getElementById("weizenBlock");
+      if (!blockEl || blockEl.style.pointerEvents === "none") return;
+      if (!hasWeizenSeeds) return alert("Kaufe zuerst Weizensamen im Weizen-Shop!");
+      weizenScore += weizenPPC;
+      blockEl.style.pointerEvents = "none";
+      blockEl.classList.add('particle');
+      setTimeout(() => {
+        blockEl.style.pointerEvents = "auto";
+        blockEl.classList.remove('particle');
+      }, weizenRespawnTime);
+      updateWeizenUI();
+    }
+
+    /* -------------------------
+       Arbeiter-Zuteilung
+    ------------------------- */
+    function assignWorkers(resource) {
+      const totalAssigned = Object.values(workersAssigned).reduce((a, b) => a + b, 0);
+      if (workerCount > totalAssigned) {
+        workersAssigned[resource]++;
+        updateArbeiterUI();
+      }
+    }
+    function unassignWorker(resource) {
+      if (workersAssigned[resource] > 0) {
+        workersAssigned[resource]--;
+        updateArbeiterUI();
+      }
+    }
+
+    /* -------------------------
+       Automatische Prozesse
+    ------------------------- */
+    function startAutoBrunnen() {
+      if (autoBrunnenInterval) clearInterval(autoBrunnenInterval);
+      autoBrunnenInterval = setInterval(() => {
+        if (brunnenLevel > 0) {
+          // 1 Wasser alle 3s pro Level = (1/3) Wasser pro Sekunde pro Level
+          wasserScore += brunnenLevel * (1/3);
+          updateWasserUI();
+        }
+      }, 1000);
+    }
+
+    function startAutoFarm() {
+      if (autoFarmInterval) clearInterval(autoFarmInterval);
+      autoFarmInterval = setInterval(() => {
+        if (farmCount > 0) {
+          // Beispiel: Farm generiert passiv ein paar Ressourcen
+          maisScore += farmCount * 2.5;
+          holzScore += farmCount * 0.5;
+          steinScore += farmCount * 0.25;
+        }
+        // Sägewerk -> Planken
+        if (hasSawmill && holzScore >= 10) {
+          holzScore -= 10;
+          plankenScore += 1;
+        }
+        // Steinbruch -> passiver Stein
+        if (hasQuarry && workerCount > 0) {
+          steinScore += 0.5;
+        }
+        // Wassermühle -> Brot (wenn Weizen da)
+        if (hasWatermill && weizenScore >= 20) {
+          weizenScore -= 20;
+          brotScore += 5;
+        }
+        // Bäckerei -> Automatisches Brot
+        if (hasBakery && weizenScore >= 10 && wasserScore >= 1) {
+          weizenScore -= 10;
+          wasserScore -= 1;
+          brotScore++;
+        }
+        updateAllUI();
+      }, 1000);
+    }
+
+    function startAutoWorkers() {
+      if (autoWorkerInterval) clearInterval(autoWorkerInterval);
+      autoWorkerInterval = setInterval(() => {
+        if (workerCount > 0) {
+          maisScore += workersAssigned.mais * workerMaisRate;
+          holzScore += workersAssigned.holz * workerHolzRate;
+          steinScore += workersAssigned.stein * workerSteinRate;
+          weizenScore += workersAssigned.weizen * workerWeizenRate;
+          // Brotverbrauch
+          brotScore -= Math.floor(workerCount / 2);
+          if (brotScore < 0) {
+            brotScore = 0;
+            alert("Nicht genug Brot für Arbeiter!");
+          }
+          updateAllUI();
+        }
+      }, 1000);
+    }
+
+    /* -------------------------
+       Forschung starten / abschließen
+    ------------------------- */
+    function startResearch(type) {
+      if (isResearching[type]) return;
+      const r = research[type];
+      // Kosten prüfen
+      if (eval(`${r.resource}Score`) >= r.cost) {
+        eval(`${r.resource}Score -= ${r.cost}`);
+        isResearching[type] = true;
+        updateAllUI();
+
+        const totalSeconds = r.researchTime / 1000;
+        let remainingTime = totalSeconds;
+        r.startTime = Date.now();
+        r.endTime = r.startTime + r.researchTime;
+
+        const progressBar = document.getElementById(`progress${capitalize(type)}`);
+        if (progressBar) {
+          progressBar.style.display = "block";
+          progressBar.value = 0;
+        }
+
+        const countdown = setInterval(() => {
+          remainingTime--;
+          if (remainingTime <= 0) {
+            clearInterval(countdown);
+            finishResearch(type);
+          } else {
+            if (progressBar) {
+              progressBar.value = (1 - remainingTime / totalSeconds) * 100;
+            }
+          }
+        }, 1000);
+      }
+    }
+
+    function finishResearch(type) {
+      const r = research[type];
+      const progressBar = document.getElementById(`progress${capitalize(type)}`);
+      if (progressBar) {
+        progressBar.style.display = "none";
+      }
+      // Effekt anwenden
+      r.effect();
+      r.level++;
+      // Kosten und Zeit steigen
+      r.cost = Math.floor(r.cost * 2.5);
+      r.researchTime = Math.floor(r.researchTime * 2);
+      isResearching[type] = false;
+      delete r.startTime;
+      delete r.endTime;
+      updateAllUI();
+    }
+
+    /* -------------------------
+       Handel
+    ------------------------- */
+    function trade(resource, amount, goldGain) {
+      if (eval(`${resource}Score`) >= amount) {
+        eval(`${resource}Score -= ${amount}`);
+        gold += goldGain;
+        updateAllUI();
+      }
+    }
+
+    /* -------------------------
+       Save / Load
+    ------------------------- */
+    function autoSaveGame() {
+      setInterval(saveGame, 5000);
+    }
+
+    function saveGame() {
+      const gameState = {
+        gold, maisScore, holzScore, steinScore, wasserScore, weizenScore, brotScore, plankenScore,
+        basePPC, maisRespawnTime, holzRespawnTime, steinRespawnTime, wasserRespawnTime, weizenRespawnTime,
+        maisFertilizer, fertilizerActive, fertilizerTime,
+        isResearching, research,
+        pickerLevel, machineLevel, wasserPumpLevel, weizenSickleLevel,
+        hasAxe, hasPickaxe, farmUnlocked, hasWeizenSeeds, hasBakery, hasSawmill, hasQuarry, hasWatermill,
+        farmCount, workerCount, workerMax, workersAssigned, workerMaisRate, workerHolzRate, workerSteinRate, workerWeizenRate,
+        brunnenLevel,
+        lastSave: Date.now()
+      };
+      localStorage.setItem("gameState", JSON.stringify(gameState));
+    }
+
+    function loadGame() {
+      const saved = JSON.parse(localStorage.getItem("gameState") || "{}");
+      gold = saved.gold || 0;
+      maisScore = saved.maisScore || 0;
+      holzScore = saved.holzScore || 0;
+      steinScore = saved.steinScore || 0;
+      wasserScore = saved.wasserScore || 0;
+      weizenScore = saved.weizenScore || 0;
+      brotScore = saved.brotScore || 0;
+      plankenScore = saved.plankenScore || 0;
+      basePPC = saved.basePPC || 1;
+      maisRespawnTime = saved.maisRespawnTime || 1000;
+      holzRespawnTime = saved.holzRespawnTime || 2000;
+      steinRespawnTime = saved.steinRespawnTime || 3000;
+      wasserRespawnTime = saved.wasserRespawnTime || 2000;
+      weizenRespawnTime = saved.weizenRespawnTime || 1500;
+      maisFertilizer = saved.maisFertilizer || 0;
+      fertilizerActive = saved.fertilizerActive || false;
+      fertilizerTime = saved.fertilizerTime || 0;
+      isResearching = saved.isResearching || { maisDouble: false, maisFaster: false, wasserFaster: false, weizenDouble: false };
+      if (saved.research) {
+        // Werte in research-Objekte zurückschreiben
+        Object.keys(research).forEach(key => {
+          if (saved.research[key]) {
+            research[key].cost = saved.research[key].cost;
+            research[key].researchTime = saved.research[key].researchTime;
+            research[key].level = saved.research[key].level;
+            research[key].startTime = saved.research[key].startTime || null;
+            research[key].endTime = saved.research[key].endTime || null;
+          }
+        });
+      }
+      pickerLevel = saved.pickerLevel || 0;
+      machineLevel = saved.machineLevel || 0;
+      wasserPumpLevel = saved.wasserPumpLevel || 0;
+      weizenSickleLevel = saved.weizenSickleLevel || 0;
+      hasAxe = saved.hasAxe || false;
+      hasPickaxe = saved.hasPickaxe || false;
+      farmUnlocked = saved.farmUnlocked || false;
+      hasWeizenSeeds = saved.hasWeizenSeeds || false;
+      hasBakery = saved.hasBakery || false;
+      hasSawmill = saved.hasSawmill || false;
+      hasQuarry = saved.hasQuarry || false;
+      hasWatermill = saved.hasWatermill || false;
+      farmCount = saved.farmCount || 0;
+      workerCount = saved.workerCount || 0;
+      workerMax = saved.workerMax || 0;
+      workersAssigned = saved.workersAssigned || { mais: 0, holz: 0, stein: 0, weizen: 0 };
+      workerMaisRate = saved.workerMaisRate || 1;
+      workerHolzRate = saved.workerHolzRate || 0.5;
+      workerSteinRate = saved.workerSteinRate || 0.3;
+      workerWeizenRate = saved.workerWeizenRate || 5;
+      brunnenLevel = saved.brunnenLevel || 0;
+
+      const now = Date.now();
+      const last = saved.lastSave || now;
+      const diffSec = Math.floor((now - last) / 1000);
+
+      // Offline-Fortschritt (Farm, Arbeiter, Dünger usw.)
+      if (farmCount > 0 && diffSec > 0) {
+        maisScore += farmCount * 2.5 * diffSec;
+        holzScore += farmCount * 0.5 * diffSec;
+        steinScore += farmCount * 0.25 * diffSec;
+      }
+      if (workerCount > 0 && diffSec > 0) {
+        maisScore += workersAssigned.mais * workerMaisRate * diffSec;
+        holzScore += workersAssigned.holz * workerHolzRate * diffSec;
+        steinScore += workersAssigned.stein * workerSteinRate * diffSec;
+        weizenScore += workersAssigned.weizen * workerWeizenRate * diffSec;
+        brotScore -= Math.floor(workerCount / 2) * diffSec;
+        if (brotScore < 0) brotScore = 0;
+      }
+      // Dünger noch aktiv?
+      if (fertilizerActive && fertilizerTime > 0) {
+        if (diffSec >= fertilizerTime) {
+          fertilizerActive = false;
+          fertilizerTime = 0;
+        } else {
+          fertilizerTime -= diffSec;
+          clearInterval(fertilizerInterval);
+          fertilizerInterval = setInterval(() => {
+            fertilizerTime--;
+            if (fertilizerTime <= 0) {
+              clearInterval(fertilizerInterval);
+              fertilizerActive = false;
+            }
+            updateMaisUI();
+          }, 1000);
+        }
+      }
+      // Forschung fortsetzen?
+      for (let key in isResearching) {
+        if (isResearching[key] && research[key].endTime) {
+          const timeLeft = research[key].endTime - now;
+          if (timeLeft <= 0) {
+            finishResearch(key);
+          } else {
+            let remainingTime = Math.ceil(timeLeft / 1000);
+            const totalSec = research[key].researchTime / 1000;
+            const progressBar = document.getElementById(`progress${capitalize(key)}`);
+            if (progressBar) {
+              progressBar.style.display = "block";
+              progressBar.value = (1 - remainingTime / totalSec) * 100;
+            }
+            const countdown = setInterval(() => {
+              remainingTime--;
+              if (remainingTime <= 0) {
+                clearInterval(countdown);
+                finishResearch(key);
+              } else {
+                if (progressBar) {
+                  progressBar.value = (1 - remainingTime / totalSec) * 100;
+                }
+              }
+            }, 1000);
+          }
+        }
+      }
+    }
+
+    /* -------------------------
+       Reset
+    ------------------------- */
+    function resetGame() {
+      gold = 0; maisScore = 0; holzScore = 0; steinScore = 0; wasserScore = 0;
+      weizenScore = 0; brotScore = 0; plankenScore = 0;
+      basePPC = 1;
+      maisRespawnTime = 1000; holzRespawnTime = 2000; steinRespawnTime = 3000; wasserRespawnTime = 2000; weizenRespawnTime = 1500;
+      maisFertilizer = 0; fertilizerActive = false; fertilizerTime = 0;
+      clearInterval(fertilizerInterval);
+      isResearching = { maisDouble: false, maisFaster: false, wasserFaster: false, weizenDouble: false };
+      research.maisDouble = { cost: 10, resource: 'mais', researchTime: 5000, effect: () => { basePPC *= 2; }, level: 0 };
+      research.maisFaster = { cost: 15, resource: 'mais', researchTime: 5000, effect: () => { maisRespawnTime = Math.max(100, maisRespawnTime * 0.9); }, level: 0 };
+      research.wasserFaster = { cost: 200, resource: 'wasser', researchTime: 10000, effect: () => { wasserRespawnTime = Math.max(100, wasserRespawnTime - 200); }, level: 0 };
+      research.weizenDouble = { cost: 300, resource: 'weizen', researchTime: 15000, effect: () => { weizenPPC *= 2; }, level: 0 };
+      pickerLevel = 0; machineLevel = 0; wasserPumpLevel = 0; weizenSickleLevel = 0;
+      hasAxe = false; hasPickaxe = false; farmUnlocked = false; hasWeizenSeeds = false; hasBakery = false;
+      hasSawmill = false; hasQuarry = false; hasWatermill = false;
+      farmCount = 0; workerCount = 0; workerMax = 0;
+      workersAssigned = { mais: 0, holz: 0, stein: 0, weizen: 0 };
+      workerMaisRate = 1; workerHolzRate = 0.5; workerSteinRate = 0.3; workerWeizenRate = 5;
+      brunnenLevel = 0;
+      clearInterval(autoFarmInterval); clearInterval(autoWorkerInterval); clearInterval(autoBrunnenInterval);
+      localStorage.removeItem("gameState");
+      document.querySelectorAll('progress').forEach(p => p.style.display = 'none');
+      alert("Spiel wurde zurückgesetzt!");
+      showPage("mais");
+      startAutoBrunnen();
+      startAutoFarm();
+      startAutoWorkers();
+      updateAllUI();
+    }
+
+    /* -------------------------
+       Update-Funktionen
+    ------------------------- */
+    function updateMaisUI() {
+      document.getElementById("maisScore").innerText = Math.floor(maisScore);
+      document.getElementById("maisGold").innerText = Math.floor(gold);
+      document.getElementById("maisPPC").innerText = getCurrentPPC();
+      document.getElementById("maisRespawnTime").innerText = (maisRespawnTime/1000).toFixed(2);
+      document.getElementById("maisFertilizerCount").innerText = maisFertilizer;
+      document.getElementById("fertilizerTimerDisplay").innerText = fertilizerActive ? "Dünger aktiv: " + fertilizerTime + "s" : "";
+
+      document.getElementById("btnMaisTrade250").disabled = (maisScore < 250);
+      document.getElementById("btnMaisTrade500").disabled = (maisScore < 500);
+      document.getElementById("btnMaisTrade1000").disabled = (maisScore < 1000);
+
+      const costPicker = Math.floor(5 * Math.pow(1.5, pickerLevel));
+      document.getElementById("costMaisPicker").innerText = costPicker;
+      document.getElementById("btnMaisPicker").disabled = (gold < costPicker);
+
+      const costMachine = Math.floor(10 * Math.pow(1.5, machineLevel));
+      document.getElementById("costMaisMachine").innerText = costMachine;
+      document.getElementById("btnMaisMachine").disabled = (gold < costMachine);
+
+      document.getElementById("btnMaisFertilizerShop").disabled = (gold < 17);
+      document.getElementById("btnAxe").disabled = (gold < 10 || hasAxe);
+      document.getElementById("axeStatus").innerText = hasAxe ? "Gekauft" : "Nicht gekauft";
+
+      document.getElementById("pickerLevel").innerText = pickerLevel;
+      document.getElementById("machineLevel").innerText = machineLevel;
+
+      // Forschung Mais
+      document.getElementById("btnMaisDouble").disabled = (maisScore < research.maisDouble.cost || isResearching.maisDouble);
+      document.getElementById("costMaisDouble").innerText = research.maisDouble.cost;
+      document.getElementById("levelMaisDoubleVal").innerText = research.maisDouble.level;
+
+      document.getElementById("btnMaisFaster").disabled = (maisScore < research.maisFaster.cost || isResearching.maisFaster);
+      document.getElementById("costMaisFaster").innerText = research.maisFaster.cost;
+      document.getElementById("levelMaisFasterVal").innerText = research.maisFaster.level;
+
+      document.getElementById("btnMaisFertilizer").disabled = (maisFertilizer <= 0 || fertilizerActive);
+    }
+
+    function updateHolzUI() {
+      document.getElementById("holzScore").innerText = Math.floor(holzScore);
+      document.getElementById("holzGold").innerText = Math.floor(gold);
+      document.getElementById("holzPPC").innerText = 1;
+      document.getElementById("holzRespawnTime").innerText = (holzRespawnTime/1000).toFixed(1);
+
+      document.getElementById("btnPickaxe").disabled = (holzScore < 20 || gold < 5 || hasPickaxe);
+      document.getElementById("pickaxeStatus").innerText = hasPickaxe ? "Gekauft" : "Nicht gekauft";
+    }
+
+    function updateSteinUI() {
+      document.getElementById("steinScore").innerText = Math.floor(steinScore);
+      document.getElementById("steinGold").innerText = Math.floor(gold);
+      document.getElementById("steinPPC").innerText = 1;
+      document.getElementById("steinRespawnTime").innerText = (steinRespawnTime/1000).toFixed(1);
+
+      document.getElementById("btnFarmUnlock").disabled = (steinScore < 100 || holzScore < 50 || gold < 20 || farmUnlocked);
+      document.getElementById("farmUnlockStatus").innerText = farmUnlocked ? "Gekauft" : "Nicht gekauft";
+    }
+
+    function updateWasserUI() {
+      document.getElementById("wasserScore").innerText = Math.floor(wasserScore);
+      document.getElementById("wasserGold").innerText = Math.floor(gold);
+      document.getElementById("wasserPPC").innerText = wasserPPC;
+      document.getElementById("wasserRespawnTime").innerText = (wasserRespawnTime/1000).toFixed(1);
+
+      // Wasserpumpe
+      const costPump = Math.floor(20 * Math.pow(1.5, wasserPumpLevel));
+      document.getElementById("costWasserPump").innerText = costPump;
+      document.getElementById("btnWasserPump").disabled = (gold < costPump);
+      document.getElementById("wasserPumpLevel").innerText = wasserPumpLevel;
+
+      // Brunnen
+      const costBrunnenGold = Math.floor(50 * Math.pow(1.5, brunnenLevel));
+      const costBrunnenStein = Math.floor(30 * Math.pow(1.5, brunnenLevel));
+      const costBrunnenHolz = Math.floor(20 * Math.pow(1.5, brunnenLevel));
+      document.getElementById("costBrunnenGold").innerText = costBrunnenGold;
+      document.getElementById("costBrunnenStein").innerText = costBrunnenStein;
+      document.getElementById("costBrunnenHolz").innerText = costBrunnenHolz;
+      document.getElementById("btnBrunnen").disabled =
+        (gold < costBrunnenGold || steinScore < costBrunnenStein || holzScore < costBrunnenHolz);
+      document.getElementById("brunnenLevel").innerText = brunnenLevel;
+
+      // Forschung Wasser
+      document.getElementById("btnWasserFaster").disabled = (wasserScore < research.wasserFaster.cost || isResearching.wasserFaster);
+      document.getElementById("costWasserFaster").innerText = research.wasserFaster.cost;
+      document.getElementById("levelWasserFasterVal").innerText = research.wasserFaster.level;
+    }
+
+    function updateWeizenUI() {
+      document.getElementById("weizenScore").innerText = Math.floor(weizenScore);
+      document.getElementById("weizenGold").innerText = Math.floor(gold);
+      document.getElementById("weizenPPC").innerText = 1;
+      document.getElementById("weizenRespawnTime").innerText = (weizenRespawnTime/1000).toFixed(1);
+
+      document.getElementById("btnWeizenSeeds").disabled = (wasserScore < 50 || maisScore < 100 || gold < 50 || hasWeizenSeeds);
+      document.getElementById("weizenSeedsStatus").innerText = hasWeizenSeeds ? "Gekauft" : "Nicht gekauft";
+
+      document.getElementById("btnWeizenTrade200").disabled = (weizenScore < 200 || !hasWeizenSeeds);
+
+      const costSickle = Math.floor(15 * Math.pow(1.5, weizenSickleLevel));
+      document.getElementById("costWeizenSickle").innerText = costSickle;
+      document.getElementById("weizenSickleLevel").innerText = weizenSickleLevel;
+      document.getElementById("btnWeizenSickle").disabled = (gold < costSickle || !hasWeizenSeeds);
+
+      // Forschung Weizen
+      document.getElementById("btnWeizenDouble").disabled = (weizenScore < research.weizenDouble.cost ||
+        isResearching.weizenDouble || !hasWeizenSeeds);
+      document.getElementById("costWeizenDouble").innerText = research.weizenDouble.cost;
+      document.getElementById("levelWeizenDoubleVal").innerText = research.weizenDouble.level;
+    }
+
+    function updateBrotUI() {
+      document.getElementById("brotScore").innerText = Math.floor(brotScore);
+      document.getElementById("brotGold").innerText = Math.floor(gold);
+
+      document.getElementById("btnBrotProduce").disabled = (weizenScore < 10 || (hasBakery && wasserScore < 1));
+      document.getElementById("btnBrotTrade").disabled = (brotScore < 1);
+
+      document.getElementById("btnBakery").disabled = (holzScore < 300 || steinScore < 100 || gold < 50 || hasBakery);
+      document.getElementById("bakeryStatus").innerText = hasBakery ? "Gekauft" : "Nicht gekauft";
+    }
+
+    function updateFarmUI() {
+      document.getElementById("farmCount").innerText = farmCount;
+      document.getElementById("btnBuildFarm").disabled = (steinScore < 50 || holzScore < 30 || gold < 10 || !farmUnlocked);
+
+      document.getElementById("btnSawmill").disabled = (holzScore < 500 || steinScore < 200 || gold < 100 || hasSawmill);
+      document.getElementById("sawmillStatus").innerText = hasSawmill ? "Gekauft" : "Nicht gekauft";
+
+      document.getElementById("btnQuarry").disabled = (steinScore < 1000 || holzScore < 300 || gold < 150 || hasQuarry);
+      document.getElementById("quarryStatus").innerText = hasQuarry ? "Gekauft" : "Nicht gekauft";
+
+      document.getElementById("btnWatermill").disabled = (wasserScore < 200 || plankenScore < 300 || gold < 100 || hasWatermill);
+      document.getElementById("watermillStatus").innerText = hasWatermill ? "Gekauft" : "Nicht gekauft";
+    }
+
+    function updateArbeiterUI() {
+      document.getElementById("workerCount").innerText = workerCount;
+      document.getElementById("workerMax").innerText = workerMax;
+      document.getElementById("workerFood").innerText = Math.floor(workerCount / 2);
+
+      const totalAssigned = workersAssigned.mais + workersAssigned.holz + workersAssigned.stein + workersAssigned.weizen;
+      document.getElementById("workerDistribution").innerText =
+        "Verteilung - Mais: " + workersAssigned.mais +
+        ", Holz: " + workersAssigned.holz +
+        ", Stein: " + workersAssigned.stein +
+        ", Weizen: " + workersAssigned.weizen +
+        " | Unverteilt: " + (workerCount - totalAssigned);
+
+      document.getElementById("btnHireWorker").disabled = (
+        brotScore < 5 || maisScore < 500 || holzScore < 200 || gold < 100 || workerCount >= workerMax
+      );
+      document.getElementById("btnWorkerHut").disabled = (steinScore < 300 || holzScore < 150 || gold < 50);
+
+      // Kosten Bessere Sichel (Mais)
+      const costBSickle = Math.floor(20 * Math.pow(1.5, workerMaisRate / 0.5 - 2));
+      document.getElementById("btnBetterSickle").disabled = (gold < costBSickle);
+      document.getElementById("costBetterSickle").innerText = costBSickle;
+
+      // Kosten Bessere Axt (Holz)
+      const costBAxe = Math.floor(30 * Math.pow(1.5, workerHolzRate / 0.3 - 5/3));
+      document.getElementById("btnBetterAxe").disabled = (gold < costBAxe);
+      document.getElementById("costBetterAxe").innerText = costBAxe;
+
+      // Kosten Bessere Sense (Weizen)
+      const costBScythe = Math.floor(40 * Math.pow(1.5, workerWeizenRate / 0.3 - 50/3));
+      document.getElementById("btnBetterScythe").disabled = (gold < costBScythe);
+      document.getElementById("costBetterScythe").innerText = costBScythe;
+    }
+
+    function updateResourceOverview() {
+      document.getElementById("resGold").innerText = Math.floor(gold);
+      document.getElementById("resMais").innerText = Math.floor(maisScore);
+      document.getElementById("resHolz").innerText = Math.floor(holzScore);
+      document.getElementById("resStein").innerText = Math.floor(steinScore);
+      document.getElementById("resPlanken").innerText = Math.floor(plankenScore);
+      document.getElementById("resWasser").innerText = Math.floor(wasserScore);
+      document.getElementById("resWeizen").innerText = Math.floor(weizenScore);
+      document.getElementById("resBrot").innerText = Math.floor(brotScore);
+    }
+
+    /* -------------------------
+       Gesamt-UI aktualisieren
+    ------------------------- */
+    function updateAllUI() {
+      updateMaisUI();
+      updateHolzUI();
+      updateSteinUI();
+      updateWasserUI();
+      updateWeizenUI();
+      updateBrotUI();
+      updateFarmUI();
+      updateArbeiterUI();
+      updateResourceOverview();
+    }
+
+    /* -------------------------
+       Hilfsfunktionen
+    ------------------------- */
+    function capitalize(str) {
+      // "wasserFaster" -> "WasserFaster" (z. B. ID = progressWasserFaster)
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function addTestResources() {
+      gold += 5000;
+      maisScore += 5000;
+      holzScore += 5000;
+      steinScore += 5000;
+      wasserScore += 5000;
+      weizenScore += 5000;
+      brotScore += 5000;
+      plankenScore += 5000;
+      updateAllUI();
+    }
+
+    /* -------------------------
+       Window onLoad
+    ------------------------- */
+    window.addEventListener("load", () => {
+      // Zuerst Seiten-Inhalt laden
+      loadGame(); 
+
+      // Alle nötigen Event-Listener hinzufügen
+      // Mais
+      document.getElementById("btnMaisTrade250").addEventListener("click", () => trade('mais', 250, 1));
+      document.getElementById("btnMaisTrade500").addEventListener("click", () => trade('mais', 500, 2));
+      document.getElementById("btnMaisTrade1000").addEventListener("click", () => trade('mais', 1000, 4));
+
+      document.getElementById("btnMaisPicker").addEventListener("click", () => {
+        const cost = Math.floor(5 * Math.pow(1.5, pickerLevel));
+        if (gold >= cost) {
+          gold -= cost;
+          pickerLevel++;
+          basePPC++;
+          updateMaisUI();
+        }
+      });
+      document.getElementById("btnMaisMachine").addEventListener("click", () => {
+        const cost = Math.floor(10 * Math.pow(1.5, machineLevel));
+        if (gold >= cost) {
+          gold -= cost;
+          machineLevel++;
+          maisRespawnTime = Math.max(100, maisRespawnTime - 50);
+          updateMaisUI();
+        }
+      });
+      document.getElementById("btnMaisFertilizerShop").addEventListener("click", () => {
+        if (gold >= 17) {
+          gold -= 17;
+          maisFertilizer++;
+          updateMaisUI();
+        }
+      });
+      document.getElementById("btnAxe").addEventListener("click", () => {
+        if (gold >= 10 && !hasAxe) {
+          gold -= 10;
+          hasAxe = true;
+          updateMaisUI();
+        }
+      });
+      document.getElementById("btnMaisFertilizer").addEventListener("click", () => {
+        if (maisFertilizer > 0 && !fertilizerActive) {
+          maisFertilizer--;
+          fertilizerActive = true;
+          fertilizerTime = 60;
+          clearInterval(fertilizerInterval);
+          fertilizerInterval = setInterval(() => {
+            fertilizerTime--;
+            if (fertilizerTime <= 0) {
+              clearInterval(fertilizerInterval);
+              fertilizerActive = false;
+            }
+            updateMaisUI();
+          }, 1000);
+          updateMaisUI();
+        }
+      });
+      document.getElementById("btnMaisDouble").addEventListener("click", () => startResearch("maisDouble"));
+      document.getElementById("btnMaisFaster").addEventListener("click", () => startResearch("maisFaster"));
+
+      // Holz
+      document.getElementById("btnPickaxe").addEventListener("click", () => {
+        if (holzScore >= 20 && gold >= 5 && !hasPickaxe) {
+          holzScore -= 20;
+          gold -= 5;
+          hasPickaxe = true;
+          updateHolzUI();
+        }
+      });
+
+      // Stein
+      document.getElementById("btnFarmUnlock").addEventListener("click", () => {
+        if (steinScore >= 100 && holzScore >= 50 && gold >= 20 && !farmUnlocked) {
+          steinScore -= 100;
+          holzScore -= 50;
+          gold -= 20;
+          farmUnlocked = true;
+          updateSteinUI();
+        }
+      });
+
+      // Wasser
+      document.getElementById("btnWasserPump").addEventListener("click", () => {
+        const cost = Math.floor(20 * Math.pow(1.5, wasserPumpLevel));
+        if (gold >= cost) {
+          gold -= cost;
+          wasserPumpLevel++;
+          wasserPPC++;
+          updateWasserUI();
+        }
+      });
+      document.getElementById("btnBrunnen").addEventListener("click", () => {
+        const costGold   = Math.floor(50 * Math.pow(1.5, brunnenLevel));
+        const costStein  = Math.floor(30 * Math.pow(1.5, brunnenLevel));
+        const costHolz   = Math.floor(20 * Math.pow(1.5, brunnenLevel));
+        if (gold >= costGold && steinScore >= costStein && holzScore >= costHolz) {
+          gold -= costGold;
+          steinScore -= costStein;
+          holzScore -= costHolz;
+          brunnenLevel++;
+          updateWasserUI();
+        }
+      });
+      document.getElementById("btnWasserFaster").addEventListener("click", () => startResearch("wasserFaster"));
+
+      // Weizen
+      document.getElementById("btnWeizenSeeds").addEventListener("click", () => {
+        if (wasserScore >= 50 && maisScore >= 100 && gold >= 50 && !hasWeizenSeeds) {
+          wasserScore -= 50;
+          maisScore -= 100;
+          gold -= 50;
+          hasWeizenSeeds = true;
+          updateWeizenUI();
+        }
+      });
+      document.getElementById("btnWeizenTrade200").addEventListener("click", () => trade('weizen', 200, 1));
+      document.getElementById("btnWeizenSickle").addEventListener("click", () => {
+        const cost = Math.floor(15 * Math.pow(1.5, weizenSickleLevel));
+        if (gold >= cost && hasWeizenSeeds) {
+          gold -= cost;
+          weizenSickleLevel++;
+          weizenPPC++;
+          updateWeizenUI();
+        }
+      });
+      document.getElementById("btnWeizenDouble").addEventListener("click", () => startResearch("weizenDouble"));
+
+      // Brot
+      document.getElementById("btnBrotProduce").addEventListener("click", () => {
+        if (weizenScore >= 10 && (!hasBakery || wasserScore >= 1)) {
+          weizenScore -= 10;
+          if (hasBakery) {
+            wasserScore -= 1;
+          }
+          brotScore++;
+          updateBrotUI();
+        }
+      });
+      document.getElementById("btnBrotTrade").addEventListener("click", () => trade('brot', 1, 3));
+      document.getElementById("btnBakery").addEventListener("click", () => {
+        if (holzScore >= 300 && steinScore >= 100 && gold >= 50 && !hasBakery) {
+          holzScore -= 300;
+          steinScore -= 100;
+          gold -= 50;
+          hasBakery = true;
+          updateBrotUI();
+        }
+      });
+
+      // Farm
+      document.getElementById("btnBuildFarm").addEventListener("click", () => {
+        if (!farmUnlocked) return alert("Schalte zuerst das Farmgrundstück im Stein-Shop frei!");
+        if (steinScore >= 50 && holzScore >= 30 && gold >= 10) {
+          steinScore -= 50;
+          holzScore -= 30;
+          gold -= 10;
+          farmCount++;
+          updateFarmUI();
+        } else {
+          alert("Nicht genug Ressourcen, um eine Farm zu bauen!");
+        }
+      });
+      document.getElementById("btnSawmill").addEventListener("click", () => {
+        if (holzScore >= 500 && steinScore >= 200 && gold >= 100 && !hasSawmill) {
+          holzScore -= 500;
+          steinScore -= 200;
+          gold -= 100;
+          hasSawmill = true;
+          updateFarmUI();
+        }
+      });
+      document.getElementById("btnQuarry").addEventListener("click", () => {
+        if (steinScore >= 1000 && holzScore >= 300 && gold >= 150 && !hasQuarry) {
+          steinScore -= 1000;
+          holzScore -= 300;
+          gold -= 150;
+          hasQuarry = true;
+          updateFarmUI();
+        }
+      });
+      document.getElementById("btnWatermill").addEventListener("click", () => {
+        if (wasserScore >= 200 && plankenScore >= 300 && gold >= 100 && !hasWatermill) {
+          wasserScore -= 200;
+          plankenScore -= 300;
+          gold -= 100;
+          hasWatermill = true;
+          updateFarmUI();
+        }
+      });
+
+      // Arbeiter
+      document.getElementById("btnHireWorker").addEventListener("click", () => {
+        if (brotScore >= 5 && maisScore >= 500 && holzScore >= 200 && gold >= 100 && workerCount < workerMax) {
+          brotScore -= 5;
+          maisScore -= 500;
+          holzScore -= 200;
+          gold -= 100;
+          workerCount++;
+          updateArbeiterUI();
+        }
+      });
+      document.getElementById("btnWorkerHut").addEventListener("click", () => {
+        if (steinScore >= 300 && holzScore >= 150 && gold >= 50) {
+          steinScore -= 300;
+          holzScore -= 150;
+          gold -= 50;
+          workerMax += 5;
+          updateArbeiterUI();
+        }
+      });
+      document.getElementById("btnBetterSickle").addEventListener("click", () => {
+        const cost = Math.floor(20 * Math.pow(1.5, workerMaisRate / 0.5 - 2));
+        if (gold >= cost) {
+          gold -= cost;
+          workerMaisRate += 0.5;
+          updateArbeiterUI();
+        }
+      });
+      document.getElementById("btnBetterAxe").addEventListener("click", () => {
+        const cost = Math.floor(30 * Math.pow(1.5, workerHolzRate / 0.3 - 5/3));
+        if (gold >= cost) {
+          gold -= cost;
+          workerHolzRate += 0.3;
+          updateArbeiterUI();
+        }
+      });
+      document.getElementById("btnBetterScythe").addEventListener("click", () => {
+        const cost = Math.floor(40 * Math.pow(1.5, workerWeizenRate / 0.3 - 50/3));
+        if (gold >= cost) {
+          gold -= cost;
+          workerWeizenRate += 0.3;
+          updateArbeiterUI();
+        }
+      });
+
+      // Seite "mais" standardmäßig anzeigen
+      showPage("mais");
+
+      // Automatische Prozesse starten
+      startAutoBrunnen();
+      startAutoFarm();
+      startAutoWorkers();
+
+      // UI aktualisieren und Autosave starten
+      updateAllUI();
+      autoSaveGame();
+    });
+  </script>
+</body>
+</html>
